@@ -4,143 +4,105 @@
 <meta charset="UTF-8">
 <title>Alencar Fretes 🏍️</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <link rel="manifest" href="manifest.json">
 
 <style>
-body {
-    background: #121212;
-    color: #ffffff;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 20px;
-}
-
-h1 {
-    margin-bottom: 25px;
-}
-
-input {
-    width: 90%;
-    padding: 18px;
-    font-size: 22px;
-    border-radius: 10px;
-    border: none;
-    text-align: center;
-}
-
-button {
-    width: 95%;
-    padding: 18px;
-    font-size: 20px;
-    font-weight: bold;
-    margin-top: 15px;
-    border-radius: 12px;
-    border: none;
-    background: #00c853;
-    color: #000;
-}
-
-.resultado {
-    margin-top: 25px;
-    font-size: 26px;
-    font-weight: bold;
-    color: #00e676;
-}
-
-.aviso {
-    margin-top: 10px;
-    font-size: 18px;
-    color: #ffca28;
-}
-
-.historico {
-    margin-top: 30px;
-    text-align: left;
-}
-
-.item {
-    border-bottom: 1px solid #333;
-    padding: 6px 0;
-}
+body { background:#121212; color:#fff; font-family:Arial; padding:15px; text-align:center }
+input, select, button { width:95%; padding:14px; margin:6px 0; border-radius:10px; border:none }
+button { font-weight:bold; cursor:pointer }
+.calcular { background:#00c853; color:#000 }
+.whatsapp { background:#25D366; color:#fff }
+.salvar { background:#2962ff; color:#fff }
+.perigo { background:#d32f2f; color:#fff }
+.box { border-top:1px solid #333; margin-top:15px; padding-top:10px; text-align:left }
+.item { border-bottom:1px solid #333; padding:6px 0 }
 </style>
 </head>
 
 <body>
 
-<h1>Alencar Fretes 🏍️</h1>
+<h2>Alencar Fretes 🏍️</h2>
 
-<input type="number" id="km" placeholder="Digite os KM" step="0.1">
+<select id="clienteSelect"></select>
 
-<button onclick="calcular()">CALCULAR FRETE</button>
-<button onclick="copiar()">COPIAR PARA WHATSAPP</button>
+<div class="box">
+<h4>➕ Novo / Editar Cliente</h4>
+<input id="nomeCliente" placeholder="Nome do cliente">
+<input id="numeroCliente" placeholder="WhatsApp (5511...)">
+<button class="salvar" onclick="salvarCliente()">Salvar</button>
+<button class="perigo" onclick="excluirCliente()">Excluir cliente</button>
+</div>
 
-<div class="resultado" id="resultado"></div>
-<div class="aviso" id="aviso"></div>
+<input type="number" id="km" placeholder="KM da entrega" step="0.1">
+<button class="calcular" onclick="calcular()">Calcular frete</button>
+<button class="whatsapp" onclick="enviarWhats()">📲 Enviar WhatsApp</button>
 
-<div class="historico">
-    <h3>🕘 Histórico</h3>
-    <div id="lista"></div>
+<div id="resultado"></div>
+<div id="aviso"></div>
+
+<div class="box">
+<h4>📅 Filtro por período</h4>
+<input type="date" id="inicio">
+<input type="date" id="fim">
+<button onclick="renderizar()">Aplicar filtro</button>
+</div>
+
+<div class="box">
+<h4>📊 Relatório</h4>
+<div id="relatorio"></div>
+<button onclick="exportarExcel()">📤 Exportar Excel</button>
+</div>
+
+<div class="box">
+<h4>☁️ Backup</h4>
+<button onclick="exportarBackup()">Exportar Backup</button>
+<input type="file" onchange="importarBackup(event)">
 </div>
 
 <script>
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
+let clientes = JSON.parse(localStorage.getItem("clientes")) || [
+  {nome:"Karla Brie", numero:"5511968971239"}
+];
+let historico = JSON.parse(localStorage.getItem("historico")) || [];
+let ultimoValor = 0;
+
+function salvarLocal() {
+  localStorage.setItem("clientes", JSON.stringify(clientes));
+  localStorage.setItem("historico", JSON.stringify(historico));
 }
 
-let ultimoValor = "";
+function atualizarClientes() {
+  const sel = document.getElementById("clienteSelect");
+  sel.innerHTML = "";
+  clientes.forEach((c,i)=>{
+    sel.innerHTML += `<option value="${i}">${c.nome}</option>`;
+  });
+}
+atualizarClientes();
+
+function salvarCliente() {
+  const nome = nomeCliente.value;
+  const numero = numeroCliente.value;
+  if(!nome || !numero) return alert("Preencha tudo");
+  const idx = clienteSelect.value;
+  clientes[idx] = {nome, numero};
+  salvarLocal();
+  atualizarClientes();
+}
+
+function excluirCliente() {
+  if(!confirm("Excluir cliente?")) return;
+  clientes.splice(clienteSelect.value,1);
+  salvarLocal();
+  atualizarClientes();
+}
 
 function calcular() {
-    const km = parseFloat(document.getElementById("km").value);
-    const valorKm = 1.90;
-    const taxaMinima = 5.00;
-
-    const resultado = document.getElementById("resultado");
-    const aviso = document.getElementById("aviso");
-
-    if (isNaN(km) || km <= 0) {
-        resultado.innerHTML = "Informe um KM válido";
-        resultado.style.color = "#ff5252";
-        aviso.innerHTML = "";
-        return;
-    }
-
-    let valor = km * valorKm;
-    valor = Math.ceil(valor * 100) / 100;
-
-    let msgAviso = "";
-
-    if (valor < taxaMinima) {
-        valor = taxaMinima;
-        msgAviso = "⚠️ Taxa mínima aplicada";
-    }
-
-    resultado.style.color = "#00e676";
-    resultado.innerHTML = "💰 Frete: R$ " + valor.toFixed(2).replace(".", ",");
-    aviso.innerHTML = msgAviso;
-
-    ultimoValor = `Frete: R$ ${valor.toFixed(2).replace(".", ",")}`;
-
-    salvarHistorico(km, valor);
-}
-
-function copiar() {
-    if (!ultimoValor) return;
-    navigator.clipboard.writeText(ultimoValor);
-    alert("Valor copiado! Cole no WhatsApp 📲");
-}
-
-function salvarHistorico(km, valor) {
-    const lista = document.getElementById("lista");
-    const item = document.createElement("div");
-    const data = new Date().toLocaleString("pt-BR");
-
-    item.className = "item";
-    item.innerHTML = `📍 ${km} km → R$ ${valor.toFixed(2).replace(".", ",")}<br><small>${data}</small>`;
-    lista.prepend(item);
-}
-</script>
-
-</body>
-</html>
+  const km = parseFloat(document.getElementById("km").value);
+  if(!km) return;
+  let valor = Math.ceil(km*1.9*100)/100;
+  if(valor<5) valor=5;
+  ultimoValor = valor;
+  resultado.innerHTML = `💰 R$ ${valor.toFixed(2).replace(".",",")}`;
+  historico.unshift({km,valor,data:new Date().toISOString()});
+  salva
