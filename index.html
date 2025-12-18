@@ -1,36 +1,136 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Alencar Fretes 🏍️</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" href="manifest.json">
+<script>
+let clientes = JSON.parse(localStorage.getItem("clientes")) || [
+  { nome: "Karla Brie", numero: "5511968971239" }
+];
+let historico = JSON.parse(localStorage.getItem("historico")) || [];
+let ultimoValor = null;
 
-<style>
-body { background:#121212; color:#fff; font-family:Arial; padding:15px; text-align:center }
-input, select, button { width:95%; padding:14px; margin:6px 0; border-radius:10px; border:none }
-button { font-weight:bold; cursor:pointer }
-.calcular { background:#00c853; color:#000 }
-.whatsapp { background:#25D366; color:#fff }
-.salvar { background:#2962ff; color:#fff }
-.perigo { background:#d32f2f; color:#fff }
-.box { border-top:1px solid #333; margin-top:15px; padding-top:10px; text-align:left }
-.item { border-bottom:1px solid #333; padding:6px 0 }
-</style>
-</head>
+const clienteSelect = document.getElementById("clienteSelect");
+const nomeCliente = document.getElementById("nomeCliente");
+const numeroCliente = document.getElementById("numeroCliente");
+const resultado = document.getElementById("resultado");
+const aviso = document.getElementById("aviso");
+const relatorio = document.getElementById("relatorio");
 
-<body>
+function salvarLocal() {
+  localStorage.setItem("clientes", JSON.stringify(clientes));
+  localStorage.setItem("historico", JSON.stringify(historico));
+}
 
-<h2>Alencar Fretes 🏍️</h2>
+function atualizarClientes() {
+  clienteSelect.innerHTML = "";
+  clientes.forEach((c, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = c.nome;
+    clienteSelect.appendChild(opt);
+  });
+}
 
-<select id="clienteSelect"></select>
+atualizarClientes();
 
-<div class="box">
-<h4>➕ Novo / Editar Cliente</h4>
-<input id="nomeCliente" placeholder="Nome do cliente">
-<input id="numeroCliente" placeholder="WhatsApp (5511...)">
-<button class="salvar" onclick="salvarCliente()">Salvar</button>
-<button class="perigo" onclick="excluirCliente()">Excluir cliente</button>
-</div>
+function salvarCliente() {
+  if (!nomeCliente.value || !numeroCliente.value) {
+    alert("Preencha nome e WhatsApp");
+    return;
+  }
 
-<input type="number" id="km" placeholder="KM
+  clientes.push({
+    nome: nomeCliente.value,
+    numero: numeroCliente.value
+  });
+
+  salvarLocal();
+  atualizarClientes();
+
+  nomeCliente.value = "";
+  numeroCliente.value = "";
+
+  alert("Cliente salvo com sucesso!");
+}
+
+function excluirCliente() {
+  if (clientes.length === 0) return;
+  if (!confirm("Deseja excluir este cliente?")) return;
+
+  clientes.splice(clienteSelect.value, 1);
+  salvarLocal();
+  atualizarClientes();
+}
+
+function calcular() {
+  const kmInput = document.getElementById("km");
+  const km = parseFloat(kmInput.value);
+
+  if (isNaN(km) || km <= 0) {
+    alert("Informe um KM válido");
+    return;
+  }
+
+  let valor = Math.ceil(km * 1.9 * 100) / 100;
+  if (valor < 5) {
+    valor = 5;
+    aviso.textContent = "⚠️ Taxa mínima aplicada (R$ 5,00)";
+    aviso.style.color = "#fbc02d";
+  } else {
+    aviso.textContent = "";
+  }
+
+  ultimoValor = valor;
+  resultado.innerHTML = `💰 R$ ${valor.toFixed(2).replace(".", ",")}`;
+
+  historico.unshift({
+    km,
+    valor,
+    data: new Date().toISOString()
+  });
+
+  salvarLocal();
+  renderizarRelatorio();
+}
+
+function enviarWhats() {
+  if (!ultimoValor) {
+    alert("Calcule o frete primeiro");
+    return;
+  }
+
+  const cliente = clientes[clienteSelect.value];
+  const km = document.getElementById("km").value;
+
+  const msg =
+`🏍️ *Alencar Fretes*
+👤 ${cliente.nome}
+📍 Distância: ${km} km
+💰 Valor: R$ ${ultimoValor.toFixed(2).replace(".", ",")}
+
+❓ Qual será o dia e horário da entrega?`;
+
+  window.open(
+    `https://wa.me/${cliente.numero}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+}
+
+function renderizarRelatorio() {
+  relatorio.innerHTML = "";
+
+  if (historico.length === 0) {
+    relatorio.innerHTML = "<small>Nenhuma entrega registrada.</small>";
+    return;
+  }
+
+  historico.forEach(h => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      📅 ${new Date(h.data).toLocaleDateString("pt-BR")}
+      <br>📍 ${h.km} km
+      <br>💰 R$ ${h.valor.toFixed(2).replace(".", ",")}
+    `;
+    relatorio.appendChild(div);
+  });
+}
+
+renderizarRelatorio();
+</script>
