@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Alencar Fretes 🏍️</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body {
+    background: #121212;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 25px;
+}
+
+input {
+    width: 90%;
+    padding: 18px;
+    font-size: 22px;
+    border-radius: 10px;
+    border: none;
+    text-align: center;
+}
+
+button {
+    width: 95%;
+    padding: 18px;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 15px;
+    border-radius: 12px;
+    border: none;
+    background: #00c853;
+    color: #000;
+}
+
+.resultado {
+    margin-top: 25px;
+    font-size: 26px;
+    font-weight: bold;
+    color: #00e676;
+}
+
+.aviso {
+    margin-top: 10px;
+    font-size: 18px;
+    color: #ffca28;
+}
+
+.historico {
+    margin-top: 30px;
+    text-align: left;
+}
+
+.item {
+    border-bottom: 1px solid #333;
+    padding: 6px 0;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Alencar Fretes 🏍️</h1>
+
+<input type="number" id="km" placeholder="Digite os KM" step="0.1">
+
+<button onclick="calcular()">CALCULAR FRETE</button>
+<button onclick="copiar()">COPIAR PARA WHATSAPP</button>
+
+<div class="resultado" id="resultado"></div>
+<div class="aviso" id="aviso"></div>
+
+<div class="historico">
+    <h3>🕘 Histórico</h3>
+    <div id="lista"></div>
+</div>
+
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
+
+let ultimoValor = "";
+
+function calcular() {
+    const km = parseFloat(document.getElementById("km").value);
+    const valorKm = 1.90;
+    const taxaMinima = 5.00;
+
+    const resultado = document.getElementById("resultado");
+    const aviso = document.getElementById("aviso");
+
+    if (isNaN(km) || km <= 0) {
+        resultado.innerHTML = "Informe um KM válido";
+        resultado.style.color = "#ff5252";
+        aviso.innerHTML = "";
+        return;
+    }
+
+    let valor = km * valorKm;
+    valor = Math.ceil(valor * 100) / 100;
+
+    let msgAviso = "";
+
+    if (valor < taxaMinima) {
+        valor = taxaMinima;
+        msgAviso = "⚠️ Taxa mínima aplicada";
+    }
+
+    resultado.style.color = "#00e676";
+    resultado.innerHTML = "💰 Frete: R$ " + valor.toFixed(2).replace(".", ",");
+    aviso.innerHTML = msgAviso;
+
+    ultimoValor = `Frete: R$ ${valor.toFixed(2).replace(".", ",")}`;
+
+    salvarHistorico(km, valor);
+}
+
+function copiar() {
+    if (!ultimoValor) return;
+    navigator.clipboard.writeText(ultimoValor);
+    alert("Valor copiado! Cole no WhatsApp 📲");
+}
+
+function salvarHistorico(km, valor) {
+    const lista = document.getElementById("lista");
+    const item = document.createElement("div");
+    const data = new Date().toLocaleString("pt-BR");
+
+    item.className = "item";
+    item.innerHTML = `📍 ${km} km → R$ ${valor.toFixed(2).replace(".", ",")}<br><small>${data}</small>`;
+    lista.prepend(item);
+}
+</script>
+
+</body>
+</html>
